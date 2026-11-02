@@ -1,0 +1,18 @@
+{
+  "name": "SuaraNote - Voice Notes & Transcriber",
+  "short_name": "SuaraNote",
+  "description": "Voice Notes & Auto-Transcriber Web App gratis dengan Web Speech API real-time",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%232563eb'/><path d='M256 120a48 48 0 0 0-48 48v112a48 48 0 0 0 96 0V168a48 48 0 0 0-48-48Zm-16 270.88V420a16 16 0 1 0 32 0v-29.12A112.05 112.05 0 0 0 368 280a16 16 0 1 0-32 0 80 80 0 0 1-160 0 16 16 0 1 0-32 0 112.05 112.05 0 0 0 96 110.88Z' fill='white'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

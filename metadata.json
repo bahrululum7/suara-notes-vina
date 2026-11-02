@@ -1,0 +1,6 @@
+{
+  "name": "SuaraNote - Voice Notes & Auto-Transcriber",
+  "description": "Aplikasi Web Voice Notes & Auto-Transcriber mobile-first dengan Speech-to-Text real-time, perekam suara, upload audio, dan penyimpanan lokal.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
