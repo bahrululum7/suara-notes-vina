@@ -112,17 +112,17 @@ export const SmartPauseModal: React.FC<SmartPauseModalProps> = ({
             </div>
             <input
               type="range"
-              min="800"
-              max="2000"
-              step="100"
+              min="600"
+              max="1200"
+              step="50"
               value={config.shortPauseMs}
               onChange={(e) => onChangeConfig({ ...config, shortPauseMs: Number(e.target.value) })}
               className="w-full h-1.5 bg-pink-100 dark:bg-[#3d2044] rounded-lg appearance-none cursor-pointer accent-pink-500"
             />
             <div className="flex justify-between text-[9px] text-pink-400">
-              <span>0.8s (Cepat)</span>
-              <span>1.2s (Standar)</span>
-              <span>2.0s (Lambat)</span>
+              <span>0.6s (Cepat)</span>
+              <span>0.8s (Default)</span>
+              <span>1.2s (Maks)</span>
             </div>
           </div>
 
@@ -139,7 +139,7 @@ export const SmartPauseModal: React.FC<SmartPauseModalProps> = ({
             <input
               type="range"
               min="1800"
-              max="4500"
+              max="4000"
               step="100"
               value={config.longPauseMs}
               onChange={(e) => onChangeConfig({ ...config, longPauseMs: Number(e.target.value) })}
@@ -147,8 +147,8 @@ export const SmartPauseModal: React.FC<SmartPauseModalProps> = ({
             />
             <div className="flex justify-between text-[9px] text-pink-400">
               <span>1.8s (Cepat)</span>
-              <span>2.6s (Standar)</span>
-              <span>4.5s (Lambat)</span>
+              <span>2.5s (Default)</span>
+              <span>4.0s (Santai)</span>
             </div>
           </div>
         </div>

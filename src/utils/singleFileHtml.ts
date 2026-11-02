@@ -325,17 +325,17 @@ export const STANDALONE_HTML_CODE = `<!DOCTYPE html>
         <div class="space-y-1.5">
           <label class="text-[11px] font-bold text-slate-600 dark:text-slate-300">Pilihan Kepekaan:</label>
           <div class="grid grid-cols-3 gap-1.5">
-            <button onclick="setSmartPausePreset(1000, 2000)" class="py-2 px-1 rounded-xl text-center text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500">
-              <p>Cepat</p>
-              <p class="text-[9px] opacity-75">1.0s / 2.0s</p>
+            <button onclick="setSmartPausePreset(600, 2000)" class="py-2 px-1 rounded-xl text-center text-xs font-semibold bg-pink-50 dark:bg-[#2b1630] border border-pink-100 dark:border-[#3d2044] hover:border-pink-500">
+              <p class="font-bold">Cepat</p>
+              <p class="text-[9px] opacity-75">0.6s / 2.0s</p>
             </button>
-            <button onclick="setSmartPausePreset(1200, 2600)" class="py-2 px-1 rounded-xl text-center text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 border border-blue-500 text-blue-600 dark:text-blue-300">
-              <p>Standar</p>
-              <p class="text-[9px] opacity-75">1.2s / 2.6s</p>
+            <button onclick="setSmartPausePreset(800, 2500)" class="py-2 px-1 rounded-xl text-center text-xs font-semibold bg-pink-500 text-white border border-pink-500 shadow-sm shadow-pink-500/25">
+              <p class="font-bold">Ideal</p>
+              <p class="text-[9px] opacity-75">0.8s / 2.5s</p>
             </button>
-            <button onclick="setSmartPausePreset(1500, 3200)" class="py-2 px-1 rounded-xl text-center text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500">
-              <p>Santai</p>
-              <p class="text-[9px] opacity-75">1.5s / 3.2s</p>
+            <button onclick="setSmartPausePreset(1200, 3000)" class="py-2 px-1 rounded-xl text-center text-xs font-semibold bg-pink-50 dark:bg-[#2b1630] border border-pink-100 dark:border-[#3d2044] hover:border-pink-500">
+              <p class="font-bold">Santai</p>
+              <p class="text-[9px] opacity-75">1.2s / 3.0s</p>
             </button>
           </div>
         </div>
@@ -345,20 +345,30 @@ export const STANDALONE_HTML_CODE = `<!DOCTYPE html>
           <div>
             <div class="flex justify-between font-semibold mb-1">
               <span>, Jeda Koma:</span>
-              <span id="shortPauseVal" class="text-blue-600 font-mono">1.2 detik</span>
+              <span id="shortPauseVal" class="text-pink-600 dark:text-pink-400 font-mono font-bold">0.8 detik</span>
             </div>
-            <input type="range" id="shortPauseSlider" min="800" max="2000" step="100" value="1200" oninput="updateSmartPauseSliders()" class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg accent-blue-600 cursor-pointer">
+            <input type="range" id="shortPauseSlider" min="600" max="1200" step="50" value="800" oninput="updateSmartPauseSliders()" class="w-full h-1.5 bg-pink-100 dark:bg-[#3d2044] rounded-lg accent-pink-500 cursor-pointer">
+            <div class="flex justify-between text-[9px] text-pink-400 mt-0.5">
+              <span>0.6s (Cepat)</span>
+              <span>0.8s (Default)</span>
+              <span>1.2s (Maks)</span>
+            </div>
           </div>
           <div>
             <div class="flex justify-between font-semibold mb-1">
               <span>. Jeda Titik:</span>
-              <span id="longPauseVal" class="text-indigo-600 font-mono">2.6 detik</span>
+              <span id="longPauseVal" class="text-purple-600 dark:text-purple-400 font-mono font-bold">2.5 detik</span>
             </div>
-            <input type="range" id="longPauseSlider" min="1800" max="4500" step="100" value="2600" oninput="updateSmartPauseSliders()" class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg accent-indigo-600 cursor-pointer">
+            <input type="range" id="longPauseSlider" min="1800" max="4000" step="100" value="2500" oninput="updateSmartPauseSliders()" class="w-full h-1.5 bg-pink-100 dark:bg-[#3d2044] rounded-lg accent-purple-500 cursor-pointer">
+            <div class="flex justify-between text-[9px] text-pink-400 mt-0.5">
+              <span>1.8s (Cepat)</span>
+              <span>2.5s (Default)</span>
+              <span>4.0s (Santai)</span>
+            </div>
           </div>
         </div>
 
-        <button onclick="closeSmartPauseModal()" class="w-full py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs active:scale-95 transition">
+        <button onclick="closeSmartPauseModal()" class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold text-xs active:scale-95 transition shadow-sm">
           Simpan & Tutup
         </button>
       </div>

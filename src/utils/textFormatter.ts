@@ -11,20 +11,20 @@
 
 export interface SmartPauseConfig {
   enabled: boolean;
-  shortPauseMs: number; // default: 1200ms -> sisipkan koma
-  longPauseMs: number;  // default: 2600ms -> sisipkan titik & kapital berikutnya
+  shortPauseMs: number; // default: 800ms (rentang 0.6s - 1.2s) -> sisipkan koma
+  longPauseMs: number;  // default: 2500ms (~2.5s) -> sisipkan titik & kapital berikutnya
 }
 
 export const DEFAULT_SMART_PAUSE_CONFIG: SmartPauseConfig = {
   enabled: true,
-  shortPauseMs: 1200,
-  longPauseMs: 2600,
+  shortPauseMs: 800,
+  longPauseMs: 2500,
 };
 
 export const SMART_PAUSE_PRESETS = [
-  { name: 'Responsif', short: 1000, long: 2000, label: 'Cepat (1.0s / 2.0s)' },
-  { name: 'Standar', short: 1200, long: 2600, label: 'Standar (1.2s / 2.6s)' },
-  { name: 'Santai', short: 1500, long: 3200, label: 'Santai (1.5s / 3.2s)' },
+  { name: 'Cepat', short: 600, long: 2000, label: 'Cepat (0.6s / 2.0s)' },
+  { name: 'Ideal', short: 800, long: 2500, label: 'Ideal (0.8s / 2.5s)' },
+  { name: 'Santai', short: 1200, long: 3000, label: 'Santai (1.2s / 3.0s)' },
 ];
 
 export const CONJUNCTIONS = [

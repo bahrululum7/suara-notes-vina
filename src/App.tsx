@@ -126,11 +126,20 @@ export default function App() {
     triggerToast('Pengaturan AI & API Key disimpan! ⚙️', '🤖');
   };
 
-  // Smart Pause Punctuation Configuration
+  // Smart Pause Punctuation Configuration (Default: 800ms / 0.8s koma, 2500ms / 2.5s titik)
   const [smartPauseConfig, setSmartPauseConfig] = useState<SmartPauseConfig>(() => {
     try {
-      const saved = localStorage.getItem('suaranote_pause_config');
+      const saved = localStorage.getItem('suaranote_pause_config_v3');
       if (saved) return JSON.parse(saved);
+      const old = localStorage.getItem('suaranote_pause_config');
+      if (old) {
+        const parsed = JSON.parse(old);
+        return {
+          enabled: parsed.enabled ?? true,
+          shortPauseMs: parsed.shortPauseMs === 1200 ? 800 : Math.min(1200, Math.max(600, parsed.shortPauseMs || 800)),
+          longPauseMs: parsed.longPauseMs === 2600 ? 2500 : (parsed.longPauseMs || 2500),
+        };
+      }
     } catch {}
     return DEFAULT_SMART_PAUSE_CONFIG;
   });
@@ -145,8 +154,12 @@ export default function App() {
   const [noteToDelete, setNoteToDelete] = useState<VoiceNote | null>(null);
   const [deletedNoteBackup, setDeletedNoteBackup] = useState<{ note: VoiceNote; index: number } | null>(null);
 
-  // Refs for Speech Recognition & Smart Pause Timers
+  // Refs for Speech Recognition Mobile Lifecycle & Smart Pause Timers
   const recognitionRef = useRef<any>(null);
+  const isRecordingRef = useRef<boolean>(false);
+  const isManualStopRef = useRef<boolean>(false);
+  const restartTimeoutRef = useRef<any>(null);
+  const interimTextRef = useRef<string>('');
   const timerIntervalRef = useRef<any>(null);
   const shortPauseTimerRef = useRef<any>(null);
   const longPauseTimerRef = useRef<any>(null);
@@ -157,6 +170,7 @@ export default function App() {
   const handleUpdateSmartPauseConfig = (newConfig: SmartPauseConfig) => {
     setSmartPauseConfig(newConfig);
     localStorage.setItem('suaranote_pause_config', JSON.stringify(newConfig));
+    localStorage.setItem('suaranote_pause_config_v3', JSON.stringify(newConfig));
     triggerToast('Pengaturan jeda waktu disimpan! ⏱️', '⚙️');
   };
 
@@ -225,8 +239,8 @@ export default function App() {
     }, 2500);
   };
 
-  // Start Speech Recognition
-  const startRecording = async () => {
+  // Start Speech Recognition (Dioptimalkan untuk Android & iPhone / iOS)
+  const startRecording = () => {
     const win = window as unknown as IWindow;
     const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
 
@@ -236,35 +250,21 @@ export default function App() {
       return;
     }
 
+    // Batalkan timeout restart sebelumnya jika ada
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+
+    isManualStopRef.current = false;
+    isRecordingRef.current = true;
+    setIsRecording(true);
+    setInterimText('');
+    interimTextRef.current = '';
+
     try {
-      // 1. Get microphone audio stream
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setAudioStream(stream);
-
-      // 2. Initialize MediaRecorder for voice playback saving
-      try {
-        audioChunksRef.current = [];
-        const recorder = new MediaRecorder(stream);
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) audioChunksRef.current.push(e.data);
-        };
-        recorder.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            if (reader.result) {
-              setRecordedAudioUrl(reader.result as string);
-            }
-          };
-          reader.readAsDataURL(blob);
-        };
-        recorder.start();
-        mediaRecorderRef.current = recorder;
-      } catch (recErr) {
-        console.warn('MediaRecorder error:', recErr);
-      }
-
-      // 3. Initialize SpeechRecognition
+      // 1. Inisialisasi dan jalankan SpeechRecognition SECARA SINKRON langsung pada gesture pengguna
+      // (Wajib untuk iOS Safari / PWA Standalone agar token user gesture tidak hilang oleh async await)
       const recognizer = new SpeechRecognitionClass();
       recognizer.continuous = true;
       recognizer.interimResults = true;
@@ -278,7 +278,7 @@ export default function App() {
       };
 
       recognizer.onresult = (event: any) => {
-        // 1. Batalkan timer jeda yang sedang berjalan karena kata baru sedang diproses
+        // Batalkan timer jeda yang sedang berjalan karena kata baru sedang diproses
         if (shortPauseTimerRef.current) {
           clearTimeout(shortPauseTimerRef.current);
           shortPauseTimerRef.current = null;
@@ -292,8 +292,9 @@ export default function App() {
         let finalStr = '';
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const chunk = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
+          const res = event.results[i];
+          const chunk = res[0]?.transcript || '';
+          if (res.isFinal) {
             finalStr += chunk + ' ';
           } else {
             interim += chunk;
@@ -305,39 +306,58 @@ export default function App() {
           setTranscript((prev) => formatSpeechChunk(prev, finalStr, shouldCapitalizeNextRef.current));
           shouldCapitalizeNextRef.current = false;
 
-          // 2. Pasang Smart Pause Timer jika diaktifkan
+          // Smart Pause Timer (Jeda koma default ~0.8s, jeda titik ~2.5s)
           if (smartPauseConfig.enabled) {
-            // Jeda Pendek (~1.2s): Sisipkan koma (', ')
             shortPauseTimerRef.current = setTimeout(() => {
               setTranscript((prev) => applyShortPauseComma(prev));
             }, smartPauseConfig.shortPauseMs);
 
-            // Jeda Panjang (~2.5 - 3s): Sisipkan titik ('. ') dan jadikan kata berikutnya berhuruf kapital
             longPauseTimerRef.current = setTimeout(() => {
               setTranscript((prev) => applyLongPausePeriod(prev));
               shouldCapitalizeNextRef.current = true;
             }, smartPauseConfig.longPauseMs);
           }
         }
+
         setInterimText(interim);
+        interimTextRef.current = interim;
       };
 
       recognizer.onerror = (event: any) => {
         console.warn('SpeechRecognition error:', event.error);
+        // Error 'no-speech' normal terjadi saat pengguna diam beberapa detik di HP; jangan hentikan rekaman
+        if (event.error === 'no-speech') {
+          return;
+        }
         if (event.error === 'not-allowed') {
-          triggerToast('Izin mikrofon ditolak! Periksa izin browser.', '⚠️');
-          stopRecording();
+          isManualStopRef.current = true;
+          isRecordingRef.current = false;
+          setIsRecording(false);
+          triggerToast('Izin mikrofon ditolak! Periksa izin di pengaturan browser.', '⚠️');
+          return;
+        }
+        if (event.error === 'audio-capture') {
+          triggerToast('Mikrofon sedang dipakai atau tidak terdeteksi.', '⚠️');
+          return;
+        }
+        if (event.error === 'network') {
+          triggerToast('Koneksi internet diperlukan untuk Speech-to-Text di browser ini.', '⚠️');
+          return;
         }
       };
 
       recognizer.onend = () => {
-        // Restart if still intended to record (mobile browsers can time out on brief pauses)
-        if (isRecording) {
-          try {
-            recognizer.start();
-          } catch {
-            stopRecording();
-          }
+        // Auto-restart jika masih dalam sesi rekaman aktif (Mencegah terputus di Android Chrome & iOS Safari)
+        if (isRecordingRef.current && !isManualStopRef.current) {
+          restartTimeoutRef.current = setTimeout(() => {
+            if (isRecordingRef.current && !isManualStopRef.current) {
+              try {
+                recognizer.start();
+              } catch (e) {
+                console.log('Speech auto-restart notice:', e);
+              }
+            }
+          }, 80);
         }
       };
 
@@ -346,12 +366,54 @@ export default function App() {
 
       // Timer
       setTimerSeconds(0);
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = setInterval(() => {
         setTimerSeconds((prev) => prev + 1);
       }, 1000);
 
+      // 2. Request mic audio stream non-blockingly untuk visualizer gelombang suara
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+          if (!isRecordingRef.current) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          setAudioStream(stream);
+
+          // Hindari MediaRecorder di iOS WebKit untuk mencegah lock hardware mic
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+          if (!isIOS) {
+            try {
+              audioChunksRef.current = [];
+              const recorder = new MediaRecorder(stream);
+              recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+              };
+              recorder.onstop = () => {
+                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  if (reader.result) {
+                    setRecordedAudioUrl(reader.result as string);
+                  }
+                };
+                reader.readAsDataURL(blob);
+              };
+              recorder.start();
+              mediaRecorderRef.current = recorder;
+            } catch (recErr) {
+              console.log('MediaRecorder skipped:', recErr);
+            }
+          }
+        }).catch((err) => {
+          console.log('Audio visualizer fallback to simulated wave:', err);
+        });
+      }
+
     } catch (err) {
-      console.error('Microphone error:', err);
+      console.error('Speech recognition start error:', err);
       triggerToast('Gagal mengakses mikrofon. Periksa izin perangkat.', '❌');
       stopRecording();
     }
@@ -359,10 +421,15 @@ export default function App() {
 
   // Stop Speech Recognition & auto-format
   const stopRecording = () => {
+    isManualStopRef.current = true;
+    isRecordingRef.current = false;
     setIsRecording(false);
-    setInterimText('');
 
-    // Bersihkan timer jeda Smart Pause
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+
     if (shortPauseTimerRef.current) {
       clearTimeout(shortPauseTimerRef.current);
       shortPauseTimerRef.current = null;
@@ -395,6 +462,13 @@ export default function App() {
       setAudioStream(null);
     }
 
+    // Komit kata-kata interim terakhir jika ada sebelum berhenti
+    if (interimTextRef.current) {
+      setTranscript((prev) => formatSpeechChunk(prev, interimTextRef.current, shouldCapitalizeNextRef.current));
+      interimTextRef.current = '';
+    }
+    setInterimText('');
+
     // Auto format hasil akhir transkripsi (titik penutup, koma konjungsi, kapital)
     setTranscript((prev) => formatTranscript(prev, true));
     triggerToast('Perekaman selesai. Teks dirapikan otomatis!', '✨');
@@ -402,7 +476,7 @@ export default function App() {
 
   // Toggle record button
   const handleToggleRecording = () => {
-    if (isRecording) {
+    if (isRecordingRef.current) {
       stopRecording();
     } else {
       startRecording();
@@ -954,21 +1028,32 @@ export default function App() {
               </span>
             </div>
 
-            {/* Editable Text Area */}
-            <div className="relative">
+            {/* Editable Text Area with Instant Live Text */}
+            <div className="relative space-y-1.5">
               <textarea
-                value={transcript}
+                value={isRecording && interimText ? (transcript ? `${transcript} ${interimText}` : interimText) : transcript}
                 onChange={(e) => setTranscript(e.target.value)}
                 rows={6}
-                placeholder="Hasil suara otomatis muncul di sini... Kamu juga bisa ketik curhatan, ide, atau edit teksnya secara bebas lho! 🌸"
+                placeholder="Hasil suara otomatis muncul di sini secara real-time kata per kata... Kamu juga bisa ketik curhatan, ide, atau edit teksnya secara bebas lho! 🌸"
                 className="w-full text-xs sm:text-sm text-slate-800 dark:text-pink-100 bg-pink-50/40 dark:bg-[#1a0c1e] rounded-2xl p-3.5 border border-pink-200/70 dark:border-[#3d1d44] focus:ring-2 focus:ring-pink-400 focus:outline-none resize-none leading-relaxed placeholder-pink-300/70 dark:placeholder-pink-400/40"
               />
               
-              {/* Real-time Interim recognition text hint */}
-              {interimText && (
-                <div className="flex items-center space-x-1.5 text-xs text-pink-600 dark:text-pink-300 italic px-2 pt-1 font-bold animate-pulse">
-                  <span className="w-2 h-2 rounded-full bg-pink-500"></span>
-                  <span>{interimText}...</span>
+              {/* Real-time speech status and interim live indicator */}
+              {isRecording && (
+                <div className="flex items-center justify-between text-xs px-1">
+                  <div className="flex items-center space-x-1.5 text-pink-600 dark:text-pink-300 font-bold truncate">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0"></span>
+                    {interimText ? (
+                      <span className="truncate italic">"{interimText}"</span>
+                    ) : (
+                      <span className="text-[11px] text-pink-400 dark:text-pink-400/80">Sedang mendengarkan... katakan sesuatu 🎙️</span>
+                    )}
+                  </div>
+                  {interimText && (
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 px-2 py-0.5 rounded-full shrink-0">
+                      Live
+                    </span>
+                  )}
                 </div>
               )}
             </div>
